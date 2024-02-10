@@ -14,3 +14,15 @@
 
 - name: setup podman user
   include_tasks: user.yml
+
+# check first if file exists in the main files directory
+- name: handling containers.conf 
+  when: lookup('ansible.builtin.fileglob', podman_containers_conf) != []
+  block:
+    - name: copy containers.conf
+      copy:
+        src: "{{ podman_containers_conf }}"
+        dest: /etc/containers/containers.conf
+        mode: '0644'
+      notify: restart podman.socket
+

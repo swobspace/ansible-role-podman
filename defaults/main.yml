@@ -2,3 +2,4 @@
 # user and group running rootless podman
 podman_user: poddy
 podman_group: poddy
+podman_containers_conf: containers.conf
