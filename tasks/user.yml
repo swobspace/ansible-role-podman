@@ -1,10 +1,12 @@
 ---
 - name: ensure group for podman user exists
+  tags: user
   ansible.builtin.group:
     name: "{{ podman_group }}"
     state: present
 
 - name: create podman user for rootless containers
+  tags: user
   ansible.builtin.user:
     name: "{{ podman_user }}"
     group: "{{ podman_group }}"
@@ -15,6 +17,32 @@
     state: present
   register: podman_user_info
 
+- name: set podman_user_uid
+  tags: user
+  set_fact:
+    podman_user_uid: "{{ podman_user_info.uid }}"
+
 - name: show podman user uid
+  tags: user,dev
   debug:
-    msg: "Podman user uid is {{ podman_user_info.uid }}"
+    msg: "Podman user uid is {{ podman_user_uid }}"
+
+- name: Enable linger
+  tags: user
+  command: loginctl enable-linger {{ podman_user }}
+  args:
+    creates: /var/lib/systemd/linger/{{ podman_user }}
+
+- name: show user info
+  tags: user
+  debug:
+    msg: "{{ podman_user_info }}"
+
+- name: create tmp dir for poddy+ansible
+  tags: user
+  file:
+    path: "{{ podman_user_info.home }}/.ansible/tmp"
+    state: directory
+    owner: "{{ podman_user }}"
+    group: "{{ podman_group }}"
+    mode: "0700"

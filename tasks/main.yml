@@ -12,11 +12,8 @@
 - name: Include OS-specific tasks
   include_tasks: "{{ ansible_os_family }}.yml"
 
-- name: setup podman user
-  include_tasks: user.yml
-
 # check first if file exists in the main files directory
-- name: handling containers.conf 
+- name: handling containers.conf
   when: lookup('ansible.builtin.fileglob', podman_containers_conf) != []
   block:
     - name: copy containers.conf
@@ -26,3 +23,36 @@
         mode: '0644'
       notify: restart podman.socket
 
+# get or create podman user
+- name: setup podman user
+  tags: user
+  include_tasks: user.yml
+
+# define users dir for systemd configs
+- name: define destination directory
+  tags: dev
+  ansible.builtin.set_fact:
+    __podman_systemd_users_dir: "/etc/containers/systemd/users/{{ podman_user_uid }}/"
+    cachable: true
+
+# copy over available quadlets
+# variable: podman_applications
+- name: install quadlets
+  when: podman_applications != {}
+  tags: dev
+  block:
+    - name: ensure systemd users dir exists
+      file:
+        path: "{{ __podman_systemd_users_dir | dirname }}"
+        state: directory
+        owner: "{{ podman_user }}"
+        group: "{{ podman_group }}"
+        mode: "0755"
+
+    - name: "copy quadlets for {{ item.key }}"
+      copy:
+        src: "quadlets/{{ item.key }}/"
+        dest: "{{ __podman_systemd_users_dir }}."
+        mode: '0644'
+      notify: systemd user reload
+      loop: "{{ podman_applications | dict2items }}"
