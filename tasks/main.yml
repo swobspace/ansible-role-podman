@@ -1,0 +1,16 @@
+---
+- name: checking Ubuntu version
+  fail:
+    msg: Ubuntu version to old, minium version is 24.04
+  when:
+    - ansible_distribution == 'Ubuntu'
+    - ansible_distribution_version < '24.04'
+
+- name: include OS-specific vars
+  include_vars: "{{ ansible_os_family }}.yml"
+
+- name: Include OS-specific tasks
+  include_tasks: "{{ ansible_os_family }}.yml"
+
+- name: setup podman user
+  include_tasks: user.yml

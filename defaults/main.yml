@@ -1,0 +1,4 @@
+---
+# user and group running rootless podman
+podman_user: poddy
+podman_group: poddy

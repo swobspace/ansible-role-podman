@@ -1,0 +1,20 @@
+---
+- name: ensure group for podman user exists
+  ansible.builtin.group:
+    name: "{{ podman_group }}"
+    state: present
+
+- name: create podman user for rootless containers
+  ansible.builtin.user:
+    name: "{{ podman_user }}"
+    group: "{{ podman_group }}"
+    comment: runs rootless podman containers
+    # password: "{{ lookup('ansible.builtin.password', '/dev/null') }}"
+    # password_lock: true
+    password: '!'
+    state: present
+  register: podman_user_info
+
+- name: show podman user uid
+  debug:
+    msg: "Podman user uid is {{ podman_user_info.uid }}"
