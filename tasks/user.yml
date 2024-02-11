@@ -1,48 +1,57 @@
 ---
-- name: ensure group for podman user exists
+- name: tasks for podman rootless user
   tags: user
-  ansible.builtin.group:
-    name: "{{ podman_group }}"
-    state: present
+  block:
+    - name: ensure group for podman user exists
+      ansible.builtin.group:
+        name: "{{ podman_group }}"
+        state: present
 
-- name: create podman user for rootless containers
-  tags: user
-  ansible.builtin.user:
-    name: "{{ podman_user }}"
-    group: "{{ podman_group }}"
-    comment: runs rootless podman containers
-    # password: "{{ lookup('ansible.builtin.password', '/dev/null') }}"
-    # password_lock: true
-    password: '!'
-    state: present
-  register: podman_user_info
+    - name: create podman user for rootless containers
+      ansible.builtin.user:
+        name: "{{ podman_user }}"
+        group: "{{ podman_group }}"
+        comment: runs rootless podman containers
+        # password: "{{ lookup('ansible.builtin.password', '/dev/null') }}"
+        # password_lock: true
+        password: '!'
+        state: present
+      register: podman_user_info
 
-- name: set podman_user_uid
-  tags: user
-  set_fact:
-    podman_user_uid: "{{ podman_user_info.uid }}"
+    - name: set podman_user_uid
+      set_fact:
+        podman_user_uid: "{{ podman_user_info.uid }}"
 
-- name: show podman user uid
-  tags: user,dev
-  debug:
-    msg: "Podman user uid is {{ podman_user_uid }}"
+    - name: show podman user uid
+      debug:
+        msg: "Podman user uid is {{ podman_user_uid }}"
 
-- name: Enable linger
-  tags: user
-  command: loginctl enable-linger {{ podman_user }}
-  args:
-    creates: /var/lib/systemd/linger/{{ podman_user }}
+    - name: Enable linger
+      command: loginctl enable-linger {{ podman_user }}
+      args:
+        creates: /var/lib/systemd/linger/{{ podman_user }}
 
-- name: show user info
-  tags: user
-  debug:
-    msg: "{{ podman_user_info }}"
+    - name: show user info
+      debug:
+        msg: "{{ podman_user_info }}"
 
-- name: create tmp dir for poddy+ansible
-  tags: user
-  file:
-    path: "{{ podman_user_info.home }}/.ansible/tmp"
-    state: directory
-    owner: "{{ podman_user }}"
-    group: "{{ podman_group }}"
-    mode: "0700"
+    - name: create tmp dir for poddy+ansible
+      file:
+        path: "{{ podman_user_info.home }}/.ansible/tmp"
+        state: directory
+        owner: "{{ podman_user }}"
+        group: "{{ podman_group }}"
+        mode: "0700"
+
+    - name: "update .bashrc for {{ podman_user }}"
+      blockinfile:
+        dest: "{{ podman_user_info.home }}/.bashrc"
+        block: |
+          export XDG_RUNTIME_DIR="/run/user/$UID"
+          export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+        marker: '#{mark} - ANSIBLE MANAGED BLOCK - XDG_RUNTIME'
+        # insertbefore: BOF
+        create: true
+        owner: "{{ podman_user }}"
+        group: "{{ podman_group }}"
+        mode: "0644"

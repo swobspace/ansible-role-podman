@@ -49,10 +49,28 @@
         group: "{{ podman_group }}"
         mode: "0755"
 
+    - name: show podman_applications variable
+      tags: debug
+      debug:
+        msg: "{{ item.key }}: {{ item.value }}"
+      loop: "{{ podman_applications | dict2items }}"
+
     - name: "copy quadlets for {{ item.key }}"
       copy:
         src: "quadlets/{{ item.key }}/"
         dest: "{{ __podman_systemd_users_dir }}."
         mode: '0644'
       notify: systemd user reload
+      loop: "{{ podman_applications | dict2items }}"
+
+    - name: "enable/start services for {{ item.key }}"
+      ansible.builtin.systemd_service:
+        enabled: true
+        state: started
+        name: "{{ item.value.start }}"
+        scope: user
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ podman_user_uid }}"
+      become: true
+      become_user: "{{ podman_user }}"
       loop: "{{ podman_applications | dict2items }}"
