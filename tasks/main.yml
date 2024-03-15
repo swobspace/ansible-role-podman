@@ -64,15 +64,20 @@
         msg: "{{ item.key }}: {{ item.value }}"
       loop: "{{ podman_applications | dict2items }}"
 
-    - name: "copy quadlets for {{ item.key }}"
+    - name: "copy quadlets"
       copy:
         src: "quadlets/{{ item.key }}/"
         dest: "{{ __podman_systemd_users_dir }}/{{ item.key }}/."
         mode: '0644'
       notify: systemd user reload
       loop: "{{ podman_applications | dict2items }}"
+      loop_control:
+        label: "quadlets for {{ item.key }}"
 
-    - name: "enable/start services for {{ item.key }}"
+    - name: Flush handlers
+      meta: flush_handlers
+
+    - name: "enable/start services"
       ansible.builtin.systemd_service:
         enabled: true
         state: started
@@ -83,3 +88,5 @@
       become: true
       become_user: "{{ podman_user }}"
       loop: "{{ podman_applications | dict2items }}"
+      loop_control:
+        label: "enable/restart for {{ item.key }}"
