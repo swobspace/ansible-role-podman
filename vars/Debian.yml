@@ -4,3 +4,4 @@ podman_packages:
   - uidmap
   - aardvark-dns
   - dbus-user-session
+  - acl
